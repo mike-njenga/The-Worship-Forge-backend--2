@@ -9,10 +9,10 @@ import connectDB from './config/database';
 
 // Import routes
 import authRoutes from './routes/auth';
-// import userRoutes from './routes/users';
-// import courseRoutes from './routes/courses';
-// import videoRoutes from './routes/videos';
-// import assignmentRoutes from './routes/assignments';
+import courseRoutes from './routes/courses';
+import videoRoutes from './routes/videos';
+import assignmentRoutes from './routes/assignments';
+import userRoutes from './routes/users';
 
 const app = express();
 
@@ -70,10 +70,10 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-// app.use('/api/users', userRoutes);
-// app.use('/api/courses', courseRoutes);
-// app.use('/api/videos', videoRoutes);
-// app.use('/api/assignments', assignmentRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/videos', videoRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

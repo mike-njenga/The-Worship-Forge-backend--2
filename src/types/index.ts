@@ -61,6 +61,9 @@ export interface IVideo extends Document {
   order: number;
   isPreview: boolean;
   createdAt: Date;
+  updatedAt: Date;
+  formattedDuration: string;
+  canUserAccess(user: IUser): boolean;
 }
 
 // Assignment Types
@@ -69,10 +72,25 @@ export interface IAssignment extends Document {
   courseId: ObjectId;
   title: string;
   description: string;
+  instructions: string;
   dueDate: Date;
   maxPoints: number;
-  attachments?: string[];
+  assignmentType: 'quiz' | 'project' | 'essay' | 'performance' | 'recording' | 'other';
+  attachments?: Array<{
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+    fileType: string;
+  }>;
+  isPublished: boolean;
+  allowLateSubmission: boolean;
+  latePenalty: number;
   createdAt: Date;
+  updatedAt: Date;
+  daysUntilDue: number;
+  status: 'upcoming' | 'due_soon' | 'overdue';
+  isOverdue(): boolean;
+  isDueSoon(): boolean;
 }
 
 // Submission Types
