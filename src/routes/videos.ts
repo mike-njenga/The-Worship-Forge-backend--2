@@ -8,7 +8,7 @@ import {
   reorderVideos,
   getVideoStats
 } from '../controllers/videoController';
-import { authenticate, authorize, requireSubscription } from '../middleware/auth';
+import { verifyFirebaseToken, requireAuth, requireRole, requireSubscription } from '../middleware/firebaseAuth';
 import { validateVideoCreation, validateObjectId } from '../middleware/validation';
 import { body } from 'express-validator';
 
@@ -22,27 +22,27 @@ router.get('/course/:courseId', validateObjectId('courseId'), getCourseVideos);
 // @route   GET /api/videos/:id
 // @desc    Get single video by ID
 // @access  Private (with subscription check)
-router.get('/:id', validateObjectId('id'), authenticate, requireSubscription, getVideoById);
+router.get('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, requireSubscription, getVideoById);
 
 // @route   GET /api/videos/:id/stats
 // @desc    Get video statistics
 // @access  Private (Instructor/Admin only)
-router.get('/:id/stats', validateObjectId('id'), authenticate, getVideoStats);
+router.get('/:id/stats', validateObjectId('id'), verifyFirebaseToken, requireAuth, getVideoStats);
 
 // @route   POST /api/videos
 // @desc    Create new video
 // @access  Private (Instructor/Admin only)
-router.post('/', authenticate, authorize('teacher', 'admin'), validateVideoCreation, createVideo);
+router.post('/', verifyFirebaseToken, requireAuth, requireRole(['teacher', 'admin']), validateVideoCreation, createVideo);
 
 // @route   PUT /api/videos/:id
 // @desc    Update video
 // @access  Private (Instructor/Admin only)
-router.put('/:id', validateObjectId('id'), authenticate, updateVideo);
+router.put('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, updateVideo);
 
 // @route   PATCH /api/videos/reorder
 // @desc    Reorder videos in a course
 // @access  Private (Instructor/Admin only)
-router.patch('/reorder', authenticate, [
+router.patch('/reorder', verifyFirebaseToken, requireAuth, [
   body('courseId')
     .isMongoId()
     .withMessage('Invalid course ID'),
@@ -60,6 +60,6 @@ router.patch('/reorder', authenticate, [
 // @route   DELETE /api/videos/:id
 // @desc    Delete video
 // @access  Private (Instructor/Admin only)
-router.delete('/:id', validateObjectId('id'), authenticate, deleteVideo);
+router.delete('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, deleteVideo);
 
 export default router;

@@ -3,6 +3,11 @@ import bcrypt from 'bcryptjs';
 import { IUser } from '../types';
 
 const userSchema = new Schema<IUser>({
+  firebaseUid: {
+    type: String,
+    unique: true,
+    sparse: true // Allow null values but ensure uniqueness when present
+  },
   email: {
     type: String,
     required: [true, 'Email is required'],

@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
 import { config, validateConfig } from './config';
-import connectDB from './config/database';
+import './config/firebase'; // Initialize Firebase
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -19,8 +19,7 @@ const app = express();
 // Validate configuration
 validateConfig();
 
-// Connect to MongoDB
-connectDB();
+// Firebase is initialized in the config/firebase.ts file
 
 // Security middleware
 app.use(helmet());
@@ -76,7 +75,7 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/users', userRoutes);
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`

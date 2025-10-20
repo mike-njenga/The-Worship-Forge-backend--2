@@ -4,6 +4,7 @@ import { Document, ObjectId } from 'mongoose';
 // User Types
 export interface IUser extends Document {
   _id: ObjectId;
+  firebaseUid?: string;
   email: string;
   password: string;
   role: 'student' | 'teacher' | 'admin';
@@ -119,9 +120,35 @@ export interface IProgress extends Document {
   lastWatched: Date;
 }
 
+// Firebase User interface (simplified for controllers)
+export interface FirebaseUser {
+  _id: string;
+  email: string;
+  role: 'student' | 'teacher' | 'admin';
+  profile: {
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+    phone?: string;
+    bio?: string;
+  };
+  subscription: {
+    plan: 'free' | 'premium';
+    status: 'active' | 'inactive' | 'trial';
+    trialStartDate?: string;
+    trialEndDate?: string;
+    subscriptionStartDate?: string;
+    subscriptionEndDate?: string;
+  };
+  isEmailVerified: boolean;
+  lastLogin?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Request Types
 export interface AuthRequest extends Request {
-  user?: IUser;
+  user?: FirebaseUser;
 }
 
 // API Response Types

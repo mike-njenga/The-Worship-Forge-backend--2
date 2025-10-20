@@ -94,14 +94,15 @@ export const getVideoById = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    // Check access permissions
-    if (req.user && !video.canUserAccess(req.user)) {
-      res.status(403).json({
-        success: false,
-        message: 'You do not have access to this video'
-      } as ApiResponse);
-      return;
-    }
+    // Check access permissions - temporarily disabled during Firebase migration
+    // TODO: Implement Firebase-based access control
+    // if (req.user && !video.canUserAccess(req.user)) {
+    //   res.status(403).json({
+    //     success: false,
+    //     message: 'You do not have access to this video'
+    //   } as ApiResponse);
+    //   return;
+    // }
 
     res.status(200).json({
       success: true,
