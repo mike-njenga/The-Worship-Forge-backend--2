@@ -9,7 +9,7 @@ import {
   getUserStats,
   changePassword
 } from '../controllers/userController';
-import { verifyFirebaseToken, requireAuth, requireRole } from '../middleware/firebaseAuth';
+import authenticateFirebaseToken from '../middleware/auth';
 import { validateObjectId, validatePagination } from '../middleware/validation';
 import { body } from 'express-validator';
 
@@ -18,27 +18,27 @@ const router = express.Router();
 // @route   GET /api/users
 // @desc    Get all users (Admin only)
 // @access  Private (Admin only)
-router.get('/', verifyFirebaseToken, requireAuth, requireRole(['admin']), validatePagination, getUsers);
+router.get('/', authenticateFirebaseToken, validatePagination, getUsers);
 
 // @route   GET /api/users/:id
 // @desc    Get user by ID
 // @access  Private (Own profile or Admin)
-router.get('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, getUserById);
+router.get('/:id', validateObjectId('id'), authenticateFirebaseToken, getUserById);
 
 // @route   GET /api/users/:id/courses
 // @desc    Get user's courses (as instructor)
 // @access  Private (Own profile or Admin)
-router.get('/:id/courses', validateObjectId('id'), verifyFirebaseToken, requireAuth, validatePagination, getUserCourses);
+router.get('/:id/courses', validateObjectId('id'), authenticateFirebaseToken, validatePagination, getUserCourses);
 
 // @route   GET /api/users/:id/stats
 // @desc    Get user statistics
 // @access  Private (Own profile or Admin)
-router.get('/:id/stats', validateObjectId('id'), verifyFirebaseToken, requireAuth, getUserStats);
+router.get('/:id/stats', validateObjectId('id'), authenticateFirebaseToken, getUserStats);
 
 // @route   PUT /api/users/:id
 // @desc    Update user profile
 // @access  Private (Own profile or Admin)
-router.put('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, [
+router.put('/:id', validateObjectId('id'), authenticateFirebaseToken, [
   body('profile.firstName')
     .optional()
     .trim()
@@ -72,7 +72,7 @@ router.put('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, [
 // @route   PATCH /api/users/:id/subscription
 // @desc    Update user subscription (Admin only)
 // @access  Private (Admin only)
-router.patch('/:id/subscription', validateObjectId('id'), verifyFirebaseToken, requireAuth, requireRole(['admin']), [
+router.patch('/:id/subscription', validateObjectId('id'), authenticateFirebaseToken, [
   body('plan')
     .optional()
     .isIn(['free', 'premium'])
@@ -97,7 +97,7 @@ router.patch('/:id/subscription', validateObjectId('id'), verifyFirebaseToken, r
 // @route   PATCH /api/users/:id/password
 // @desc    Change user password
 // @access  Private (Own account only)
-router.patch('/:id/password', validateObjectId('id'), verifyFirebaseToken, requireAuth, [
+router.patch('/:id/password', validateObjectId('id'), authenticateFirebaseToken, [
   body('currentPassword')
     .notEmpty()
     .withMessage('Current password is required'),
@@ -112,6 +112,6 @@ router.patch('/:id/password', validateObjectId('id'), verifyFirebaseToken, requi
 // @route   DELETE /api/users/:id
 // @desc    Delete user account
 // @access  Private (Own account or Admin)
-router.delete('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, deleteUser);
+router.delete('/:id', validateObjectId('id'), authenticateFirebaseToken, deleteUser);
 
 export default router;

@@ -13,6 +13,7 @@ import courseRoutes from './routes/courses';
 import videoRoutes from './routes/videos';
 import assignmentRoutes from './routes/assignments';
 import userRoutes from './routes/users';
+import adminRoutes from './routes/admin';
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

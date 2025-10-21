@@ -8,7 +8,7 @@ import {
   toggleAssignmentPublish,
   getAssignmentStats
 } from '../controllers/assignmentController';
-import { verifyFirebaseToken, requireAuth, requireRole, requireSubscription } from '../middleware/firebaseAuth';
+import authenticateFirebaseToken from '../middleware/auth';
 import { validateAssignmentCreation, validateObjectId } from '../middleware/validation';
 import { body } from 'express-validator';
 
@@ -22,27 +22,27 @@ router.get('/course/:courseId', validateObjectId('courseId'), getCourseAssignmen
 // @route   GET /api/assignments/:id
 // @desc    Get single assignment by ID
 // @access  Private (with subscription check)
-router.get('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, requireSubscription, getAssignmentById);
+router.get('/:id', validateObjectId('id'), authenticateFirebaseToken, getAssignmentById);
 
 // @route   GET /api/assignments/:id/stats
 // @desc    Get assignment statistics
 // @access  Private (Instructor/Admin only)
-router.get('/:id/stats', validateObjectId('id'), verifyFirebaseToken, requireAuth, getAssignmentStats);
+router.get('/:id/stats', validateObjectId('id'), authenticateFirebaseToken, getAssignmentStats);
 
 // @route   POST /api/assignments
 // @desc    Create new assignment
 // @access  Private (Instructor/Admin only)
-router.post('/', verifyFirebaseToken, requireAuth, requireRole(['teacher', 'admin']), validateAssignmentCreation, createAssignment);
+router.post('/', authenticateFirebaseToken, validateAssignmentCreation, createAssignment);
 
 // @route   PUT /api/assignments/:id
 // @desc    Update assignment
 // @access  Private (Instructor/Admin only)
-router.put('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, updateAssignment);
+router.put('/:id', validateObjectId('id'), authenticateFirebaseToken, updateAssignment);
 
 // @route   PATCH /api/assignments/:id/publish
 // @desc    Publish/Unpublish assignment
 // @access  Private (Instructor/Admin only)
-router.patch('/:id/publish', validateObjectId('id'), verifyFirebaseToken, requireAuth, [
+router.patch('/:id/publish', validateObjectId('id'), authenticateFirebaseToken, [
   body('isPublished')
     .isBoolean()
     .withMessage('isPublished must be a boolean value'),
@@ -51,6 +51,6 @@ router.patch('/:id/publish', validateObjectId('id'), verifyFirebaseToken, requir
 // @route   DELETE /api/assignments/:id
 // @desc    Delete assignment
 // @access  Private (Instructor/Admin only)
-router.delete('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, deleteAssignment);
+router.delete('/:id', validateObjectId('id'), authenticateFirebaseToken, deleteAssignment);
 
 export default router;

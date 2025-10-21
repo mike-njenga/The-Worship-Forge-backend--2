@@ -9,7 +9,7 @@ import {
   getInstructorCourses,
   getCourseStats
 } from '../controllers/courseController';
-import { verifyFirebaseToken, requireAuth, requireRole } from '../middleware/firebaseAuth';
+import authenticateFirebaseToken from '../middleware/auth';
 import { validateCourseCreation, validateObjectId, validatePagination } from '../middleware/validation';
 import { body } from 'express-validator';
 
@@ -33,22 +33,22 @@ router.get('/:id', validateObjectId('id'), getCourseById);
 // @route   GET /api/courses/:id/stats
 // @desc    Get course statistics
 // @access  Private (Instructor/Admin only)
-router.get('/:id/stats', validateObjectId('id'), verifyFirebaseToken, requireAuth, getCourseStats);
+router.get('/:id/stats', validateObjectId('id'), authenticateFirebaseToken, getCourseStats);
 
 // @route   POST /api/courses
 // @desc    Create new course
 // @access  Private (Teacher/Admin only)
-router.post('/', verifyFirebaseToken, requireAuth, requireRole(['teacher', 'admin']), validateCourseCreation, createCourse);
+router.post('/', authenticateFirebaseToken, validateCourseCreation, createCourse);
 
 // @route   PUT /api/courses/:id
 // @desc    Update course
 // @access  Private (Instructor/Admin only)
-router.put('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, updateCourse);
+router.put('/:id', validateObjectId('id'), authenticateFirebaseToken, updateCourse);
 
 // @route   PATCH /api/courses/:id/publish
 // @desc    Publish/Unpublish course
 // @access  Private (Instructor/Admin only)
-router.patch('/:id/publish', validateObjectId('id'), verifyFirebaseToken, requireAuth, [
+router.patch('/:id/publish', validateObjectId('id'), authenticateFirebaseToken, [
   body('isPublished')
     .isBoolean()
     .withMessage('isPublished must be a boolean value'),
@@ -57,6 +57,6 @@ router.patch('/:id/publish', validateObjectId('id'), verifyFirebaseToken, requir
 // @route   DELETE /api/courses/:id
 // @desc    Delete course
 // @access  Private (Instructor/Admin only)
-router.delete('/:id', validateObjectId('id'), verifyFirebaseToken, requireAuth, deleteCourse);
+router.delete('/:id', validateObjectId('id'), authenticateFirebaseToken, deleteCourse);
 
 export default router;

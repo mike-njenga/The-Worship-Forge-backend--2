@@ -141,9 +141,9 @@ export interface FirebaseUser {
     subscriptionEndDate?: string;
   };
   isEmailVerified: boolean;
-  lastLogin?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Request Types
@@ -210,4 +210,72 @@ export interface ICourseEnrollment extends Document {
   completedAt?: Date;
   progress: number; // percentage
   isActive: boolean;
+}
+
+// Admin Dashboard Types
+export interface AdminStats {
+  totalUsers: number;
+  totalCourses: number;
+  totalVideos: number;
+  activeSubscriptions: number;
+  trialUsers: number;
+  premiumUsers: number;
+  totalRevenue: number;
+  monthlyRevenue: number;
+}
+
+export interface SubscriptionAnalytics {
+  totalSubscriptions: number;
+  activeSubscriptions: number;
+  trialSubscriptions: number;
+  cancelledSubscriptions: number;
+  monthlyRevenue: number;
+  totalRevenue: number;
+  conversionRate: number;
+}
+
+export interface ProgressAnalytics {
+  totalProgress: number;
+  averageProgress: number;
+  completionRate: number;
+  topPerformingCourses: Array<{
+    courseId: string;
+    courseTitle: string;
+    averageProgress: number;
+    studentCount: number;
+  }>;
+}
+
+// Chat and Communication Types
+export interface ChatMessage {
+  id: string;
+  author: 'me' | 'teacher' | 'peer';
+  text: string;
+  timestamp: string;
+}
+
+// Student Performance Types
+export interface StudentPerformance {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  courseId: string;
+  courseTitle: string;
+  totalAssignments: number;
+  completedAssignments: number;
+  averageGrade: number;
+  lastActivity: string;
+  currentVideo: string;
+  canProceed: boolean;
+  performanceRating: 'excellent' | 'good' | 'average' | 'needs_improvement' | 'poor';
+}
+
+export interface Feedback {
+  id: string;
+  studentId: string;
+  studentName: string;
+  assignmentTitle: string;
+  feedback: string;
+  rating: number;
+  createdAt: string;
 }
