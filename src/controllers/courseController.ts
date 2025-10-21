@@ -409,9 +409,9 @@ export const getInstructorCourses = async (req: Request, res: Response): Promise
       data: {
         instructor: {
           id: instructor._id,
-          name: `${instructor.profile.firstName} ${instructor.profile.lastName}`,
-          avatar: instructor.profile.avatar,
-          bio: instructor.profile.bio
+          name: `${instructor.firstName} ${instructor.lastName}`,
+          avatar: instructor.avatar,
+          bio: instructor.bio
         },
         courses,
         pagination: {

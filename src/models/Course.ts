@@ -81,12 +81,12 @@ courseSchema.index({ price: 1 });
 
 // Virtual for total videos count
 courseSchema.virtual('totalVideos').get(function() {
-  return this.videos.length;
+  return this.videos ? this.videos.length : 0;
 });
 
 // Virtual for total assignments count
 courseSchema.virtual('totalAssignments').get(function() {
-  return this.assignments.length;
+  return this.assignments ? this.assignments.length : 0;
 });
 
 // Virtual for estimated duration (if videos have duration)

@@ -369,7 +369,7 @@ export const getUserCourses = async (req: AuthRequest, res: Response): Promise<v
       data: {
         user: {
           id: user._id,
-          name: `${user.profile.firstName} ${user.profile.lastName}`,
+          name: `${user.firstName} ${user.lastName}`,
           role: user.role
         },
         courses,

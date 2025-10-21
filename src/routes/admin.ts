@@ -4,6 +4,7 @@ import {
   getAllUsers,
   updateUserAdmin,
   getAllCourses,
+  createCourseAdmin,
   updateCourseAdmin,
   getAllVideos,
   getSubscriptionAnalytics,
@@ -27,6 +28,7 @@ router.patch('/users/:id', updateUserAdmin);
 
 // Course management
 router.get('/courses', getAllCourses);
+router.post('/courses', createCourseAdmin);
 router.patch('/courses/:id', updateCourseAdmin);
 
 // Video management

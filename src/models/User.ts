@@ -18,7 +18,7 @@ const userSchema = new Schema<IUser>({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() { return !this.firebaseUid; }, // Only required if not a Firebase user
     minlength: [6, 'Password must be at least 6 characters'],
     select: false // Don't include password in queries by default
   },
@@ -27,32 +27,30 @@ const userSchema = new Schema<IUser>({
     enum: ['student', 'teacher', 'admin'],
     default: 'student'
   },
-  profile: {
-    firstName: {
-      type: String,
-      required: [true, 'First name is required'],
-      trim: true,
-      maxlength: [50, 'First name cannot exceed 50 characters']
-    },
-    lastName: {
-      type: String,
-      required: [true, 'Last name is required'],
-      trim: true,
-      maxlength: [50, 'Last name cannot exceed 50 characters']
-    },
-    avatar: {
-      type: String,
-      default: ''
-    },
-    phone: {
-      type: String,
-      trim: true,
-      match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
-    },
-    bio: {
-      type: String,
-      maxlength: [500, 'Bio cannot exceed 500 characters']
-    }
+  firstName: {
+    type: String,
+    required: [true, 'First name is required'],
+    trim: true,
+    maxlength: [50, 'First name cannot exceed 50 characters']
+  },
+  lastName: {
+    type: String,
+    required: [true, 'Last name is required'],
+    trim: true,
+    maxlength: [50, 'Last name cannot exceed 50 characters']
+  },
+  avatar: {
+    type: String,
+    default: ''
+  },
+  phone: {
+    type: String,
+    trim: true,
+    match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
+  },
+  bio: {
+    type: String,
+    maxlength: [500, 'Bio cannot exceed 500 characters']
   },
   subscription: {
     plan: {
@@ -97,8 +95,8 @@ userSchema.index({ role: 1 });
 userSchema.index({ 'subscription.status': 1 });
 
 // Virtual for full name
-userSchema.virtual('profile.fullName').get(function() {
-  return `${this.profile.firstName} ${this.profile.lastName}`;
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`;
 });
 
 // Virtual for subscription status

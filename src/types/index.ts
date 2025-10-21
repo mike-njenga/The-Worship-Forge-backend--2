@@ -8,13 +8,11 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: 'student' | 'teacher' | 'admin';
-  profile: {
-    firstName: string;
-    lastName: string;
-    avatar?: string;
-    phone?: string;
-    bio?: string;
-  };
+  firstName: string;
+  lastName: string;
+  avatar?: string;
+  phone?: string;
+  bio?: string;
   subscription: {
     plan: 'free' | 'premium';
     status: 'active' | 'inactive' | 'trial';

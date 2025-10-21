@@ -34,13 +34,13 @@ export const getSystemStats = async (req: AuthRequest, res: Response): Promise<v
     const recentUsers = await User.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('profile.firstName profile.lastName email role createdAt');
+      .select('firstName lastName email role createdAt');
 
     const recentCourses = await Course.find()
       .sort({ createdAt: -1 })
       .limit(5)
       .select('title instructor createdAt')
-      .populate('instructor', 'profile.firstName profile.lastName');
+      .populate('instructor', 'firstName lastName');
 
     const stats = {
       users: {
@@ -260,7 +260,7 @@ export const getAllCourses = async (req: AuthRequest, res: Response): Promise<vo
 
     // Execute query
     const courses = await Course.find(filter)
-      .populate('instructor', 'profile.firstName profile.lastName email')
+      .populate('instructor', 'firstName lastName email')
       .sort(sortObj)
       .skip(skip)
       .limit(limitNum);
@@ -287,6 +287,68 @@ export const getAllCourses = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve courses',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as ApiResponse);
+  }
+};
+
+// @desc    Create new course
+// @route   POST /api/admin/courses
+// @access  Private (Admin only)
+export const createCourseAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      title,
+      description,
+      instructor,
+      price,
+      category,
+      level,
+      tags,
+      isPublished = false,
+      thumbnail
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !description || !instructor || price === undefined || !category || !level) {
+      res.status(400).json({
+        success: false,
+        message: 'Missing required fields: title, description, instructor, price, category, level'
+      } as ApiResponse);
+      return;
+    }
+
+    // For now, use the admin user as the instructor since we're creating from admin panel
+    // Later this could be changed to select from a list of instructors
+    const instructorId = req.mongoUser._id;
+
+    const course = new Course({
+      title,
+      description,
+      instructor: instructorId, // Use admin user as instructor
+      price: parseInt(price),
+      category,
+      level,
+      tags: tags || [],
+      isPublished,
+      thumbnail: thumbnail || '/logo.jpeg'
+    });
+
+    await course.save();
+
+    // Populate instructor before returning
+    await course.populate('instructor', 'firstName lastName email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Course created successfully',
+      data: { course }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Create course admin error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create course',
       error: error instanceof Error ? error.message : 'Unknown error'
     } as ApiResponse);
   }
@@ -322,6 +384,9 @@ export const updateCourseAdmin = async (req: AuthRequest, res: Response): Promis
     if (isPublished !== undefined) course.isPublished = isPublished;
 
     await course.save();
+
+    // Populate instructor before returning
+    await course.populate('instructor', 'firstName lastName email');
 
     res.status(200).json({
       success: true,

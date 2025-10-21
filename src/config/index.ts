@@ -36,7 +36,8 @@ export const config = {
   // Rate Limiting Configuration
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000'), // Increased for development
+    enabled: process.env.RATE_LIMIT_ENABLED !== 'false', // Can be disabled for development
   },
   
   // File Upload Configuration
