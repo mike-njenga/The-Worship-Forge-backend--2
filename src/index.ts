@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 
 import { config, validateConfig } from './config';
 import './config/firebase'; // Initialize Firebase
+import connectDB from './config/database';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -134,12 +135,27 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Start server
-const PORT = config.port;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${config.nodeEnv} mode on port ${PORT}`);
-  console.log(`📱 API Health Check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Frontend URL: ${config.frontendUrl}`);
-});
+// Start server only after database connection
+const startServer = async () => {
+  try {
+    // Connect to MongoDB Atlas first
+    await connectDB();
+    
+    // Start the Express server
+    const PORT = config.port;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running in ${config.nodeEnv} mode on port ${PORT}`);
+      console.log(`📱 API Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🌐 Frontend URL: ${config.frontendUrl}`);
+      console.log(`🔗 Database: MongoDB Atlas`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
 
 export default app;

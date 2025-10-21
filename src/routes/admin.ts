@@ -37,3 +37,4 @@ router.get('/subscriptions', getSubscriptionAnalytics);
 router.get('/progress', getProgressAnalytics);
 
 export default router;
+

@@ -7,6 +7,7 @@ const connectDB = async (): Promise<void> => {
       // These options are no longer needed in newer versions of Mongoose
       // but kept for compatibility
     });
+    console.log('Database connected successfully to MongoDB Atlas cluster'); 
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     
