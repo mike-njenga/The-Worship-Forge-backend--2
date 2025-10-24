@@ -4,6 +4,72 @@ import Course from '../models/Course';
 import { ApiResponse, AuthRequest } from '../types';
 import mongoose from 'mongoose';
 
+// @desc    Get all published assignments with filtering and pagination
+// @route   GET /api/assignments
+// @access  Public
+export const getAllAssignments = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'dueDate',
+      order = 'asc',
+      courseId,
+      assignmentType,
+      isPublished = true
+    } = req.query;
+
+    // Build filter object
+    const filter: any = {};
+    
+    if (courseId) filter.courseId = courseId;
+    if (assignmentType) filter.assignmentType = assignmentType;
+    if (isPublished !== undefined) filter.isPublished = isPublished === 'true';
+
+    // Calculate pagination
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build sort object
+    const sortOrder = order === 'desc' ? -1 : 1;
+    const sortObj: any = {};
+    sortObj[sort as string] = sortOrder;
+
+    // Execute query
+    const assignments = await Assignment.find(filter)
+      .populate('courseId', 'title instructor')
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum);
+
+    // Get total count for pagination
+    const total = await Assignment.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignments retrieved successfully',
+      data: {
+        assignments,
+        pagination: {
+          currentPage: pageNum,
+          totalPages: Math.ceil(total / limitNum),
+          totalAssignments: total,
+          hasNext: pageNum < Math.ceil(total / limitNum),
+          hasPrev: pageNum > 1
+        }
+      }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Get all assignments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve assignments',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as ApiResponse);
+  }
+};
+
 // @desc    Get assignments for a course
 // @route   GET /api/assignments/course/:courseId
 // @access  Public (with subscription check)

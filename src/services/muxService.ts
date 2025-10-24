@@ -29,7 +29,7 @@ export class MuxService {
       console.log('Creating Mux direct upload with options:', {
         cors_origin: options.cors_origin || config.frontendUrl,
         new_asset_settings: {
-          playback_policy: ['public'],
+          playback_policy: ['public'] as any,
           ...options.new_asset_settings,
         },
       });
@@ -37,9 +37,9 @@ export class MuxService {
       const upload = await mux.video.uploads.create({
         cors_origin: options.cors_origin || config.frontendUrl,
         new_asset_settings: {
-          playback_policy: ['public'],
+          playback_policy: ['public'] as any,
           ...options.new_asset_settings,
-        },
+        } as any,
       });
 
       console.log('Mux direct upload created successfully:', {
@@ -67,6 +67,29 @@ export class MuxService {
   }
 
   /**
+   * Get upload details by ID
+   */
+  static async getUpload(uploadId: string) {
+    if (!isMuxConfigured || !mux) {
+      throw new Error('Mux is not configured. Please set MUX_TOKEN_ID and MUX_TOKEN_SECRET environment variables.');
+    }
+
+    try {
+      const upload = await mux.video.uploads.retrieve(uploadId);
+      return {
+        id: upload.id,
+        status: upload.status,
+        asset_id: upload.asset_id,
+        created_at: (upload as any).created_at,
+        updated_at: (upload as any).updated_at,
+      };
+    } catch (error) {
+      console.error('Error fetching Mux upload:', error);
+      throw new Error('Failed to fetch video upload');
+    }
+  }
+
+  /**
    * Get asset details by ID
    */
   static async getAsset(assetId: string) {
@@ -82,8 +105,8 @@ export class MuxService {
         duration: asset.duration,
         aspect_ratio: asset.aspect_ratio,
         playback_ids: asset.playback_ids,
-        created_at: asset.created_at,
-        updated_at: asset.updated_at,
+        created_at: (asset as any).created_at,
+        updated_at: (asset as any).updated_at,
       };
     } catch (error) {
       console.error('Error fetching Mux asset:', error);
@@ -137,7 +160,7 @@ export class MuxService {
     }
 
     try {
-      const analytics = await mux.data.overall.get({
+      const analytics = await (mux.data as any).overall.get({
         timeframe: [timeframe],
         filters: [`asset_id:${assetId}`],
       });
@@ -160,7 +183,7 @@ export class MuxService {
       const token = mux.jwt.signPlaybackId(playbackId, {
         keyId: config.mux.tokenId,
         keySecret: config.mux.signingKey,
-        expiration: expiration,
+        expiration: expiration.toString(),
       });
       
       return `https://stream.mux.com/${playbackId}.m3u8?token=${token}`;
@@ -184,7 +207,7 @@ export class MuxService {
         console.warn('Mux webhook secret not configured');
         return true; // Allow in development
       }
-      return mux.webhooks.verifyHeader(payload, signature, config.mux.webhookSecret);
+      return (mux.webhooks as any).verifyHeader(payload, signature, config.mux.webhookSecret);
     } catch (error) {
       console.error('Error verifying webhook signature:', error);
       return false;

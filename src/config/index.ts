@@ -11,11 +11,6 @@ export const config = {
   // MongoDB Configuration
   mongoUri: process.env.MONGODB_URI || '',
   
-  // JWT Configuration
-  jwtSecret: process.env.JWT_SECRET || 'your-fallback-secret-key',
-  jwtExpire: process.env.JWT_EXPIRE || '7d',
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'your-fallback-refresh-secret',
-  jwtRefreshExpire: process.env.JWT_REFRESH_EXPIRE || '30d',
   
   // Firebase Configuration
   firebase: {
@@ -69,8 +64,6 @@ export const config = {
 export const validateConfig = (): void => {
   const requiredVars = [
     'MONGODB_URI',
-    'JWT_SECRET',
-    'JWT_REFRESH_SECRET',
   ];
 
   const missingVars = requiredVars.filter(varName => !process.env[varName]);

@@ -164,14 +164,6 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-// JWT Payload Types
-export interface JWTPayload {
-  userId: string;
-  email: string;
-  role: string;
-  iat?: number;
-  exp?: number;
-}
 
 // File Upload Types
 export interface FileUpload {

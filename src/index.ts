@@ -161,22 +161,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     return;
   }
 
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    res.status(401).json({
-      success: false,
-      message: 'Invalid token'
-    });
-    return;
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    res.status(401).json({
-      success: false,
-      message: 'Token expired'
-    });
-    return;
-  }
 
   // Default error
   res.status(err.statusCode || 500).json({

@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  getAllAssignments,
   getCourseAssignments,
   getAssignmentById,
   createAssignment,
@@ -13,6 +14,11 @@ import { validateAssignmentCreation, validateObjectId } from '../middleware/vali
 import { body } from 'express-validator';
 
 const router = express.Router();
+
+// @route   GET /api/assignments
+// @desc    Get all published assignments with filtering and pagination
+// @access  Public
+router.get('/', getAllAssignments);
 
 // @route   GET /api/assignments/course/:courseId
 // @desc    Get assignments for a course
