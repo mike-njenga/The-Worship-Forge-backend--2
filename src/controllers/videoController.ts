@@ -572,10 +572,19 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
     const { type, data } = req.body;
 
     if (type === 'video.asset.ready') {
-      // Find video by Mux asset ID
-      const video = await Video.findOne({ muxAssetId: data.id });
+      console.log('Received video.asset.ready webhook for asset:', data.id);
+      
+      // First try to find video by muxAssetId (if already set)
+      let video = await Video.findOne({ muxAssetId: data.id });
+      
+      // If not found, try to find by upload ID from the asset data
+      if (!video && data.upload_id) {
+        video = await Video.findOne({ muxUploadId: data.upload_id });
+        console.log('Found video by upload ID:', data.upload_id);
+      }
+      
       if (!video) {
-        console.error('Video not found for Mux asset:', data.id);
+        console.error('Video not found for Mux asset:', data.id, 'or upload ID:', data.upload_id);
         res.status(404).json({
           success: false,
           message: 'Video not found'
@@ -585,6 +594,12 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
 
       // Get asset details from Mux
       const assetDetails = await MuxService.getAsset(data.id);
+      console.log('Asset details from Mux:', {
+        id: assetDetails.id,
+        status: assetDetails.status,
+        duration: assetDetails.duration,
+        playback_ids: assetDetails.playback_ids
+      });
 
       // Update video with Mux asset information
       video.muxAssetId = data.id;
@@ -595,15 +610,27 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
       
       await video.save();
 
-      console.log(`Video ${video._id} is ready for playback`);
+      console.log(`Video ${video._id} is ready for playback with playback ID: ${video.muxPlaybackId}`);
     } else if (type === 'video.asset.errored') {
-      // Find video by Mux asset ID
-      const video = await Video.findOne({ muxAssetId: data.id });
+      console.log('Received video.asset.errored webhook for asset:', data.id);
+      
+      // Try to find video by muxAssetId first
+      let video = await Video.findOne({ muxAssetId: data.id });
+      
+      // If not found, try to find by upload ID
+      if (!video && data.upload_id) {
+        video = await Video.findOne({ muxUploadId: data.upload_id });
+      }
+      
       if (video) {
         video.muxStatus = 'errored';
         await video.save();
         console.error(`Video ${video._id} processing failed`);
+      } else {
+        console.error('Video not found for errored asset:', data.id);
       }
+    } else {
+      console.log('Received unhandled webhook type:', type, 'for data:', data);
     }
 
     res.status(200).json({
