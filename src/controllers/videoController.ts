@@ -4,6 +4,7 @@ import Course from '../models/Course';
 import { ApiResponse, AuthRequest } from '../types';
 import mongoose from 'mongoose';
 import MuxService from '../services/muxService';
+import { config } from '../config';
 
 // @desc    Get videos for a course
 // @route   GET /api/videos/course/:courseId
@@ -464,7 +465,7 @@ export const getVideoStats = async (req: AuthRequest, res: Response): Promise<vo
 // @desc    Create upload URL for Mux video upload
 // @route   POST /api/videos/upload-url
 // @access  Private (Instructor/Admin only)
-export const createUploadUrl = async (req: AuthRequest, res: Response): Promise<void> => {
+export const createUploadUrl = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       courseId,
@@ -475,7 +476,13 @@ export const createUploadUrl = async (req: AuthRequest, res: Response): Promise<
     } = req.body;
 
     console.log('createUploadUrl called with:', { courseId, title, description, order, isPreview });
-
+    console.log('Mux configuration check:', {
+      tokenId: config.mux.tokenId ? 'SET' : 'NOT SET',
+      tokenSecret: config.mux.tokenSecret ? 'SET' : 'NOT SET',
+      signingKey: config.mux.signingKey ? 'SET' : 'NOT SET',
+      webhookSecret: config.mux.webhookSecret ? 'SET' : 'NOT SET'
+    });
+ 
     // Check if course exists and user is instructor
     const course = await Course.findById(courseId);
     if (!course) {
@@ -489,25 +496,47 @@ export const createUploadUrl = async (req: AuthRequest, res: Response): Promise<
 
     console.log('Course found:', course.title);
 
-    // Temporarily bypass authentication for testing
-    // TODO: Re-enable authentication after testing
-    /*
-    // Check if user can add videos to this course
-    if (req.user!.role !== 'admin' && course.instructor.toString() !== req.user!._id.toString()) {
+    // Check if user is admin
+    if (req.user!.role !== 'admin') {
       res.status(403).json({
         success: false,
-        message: 'You can only add videos to your own courses'
+        message: 'Only administrators can upload videos'
       } as ApiResponse);
       return;
     }
-    */
 
     // Create Mux direct upload
     console.log('Creating Mux direct upload for course:', courseId);
-    const uploadData = await MuxService.createDirectUpload({
-      cors_origin: process.env.FRONTEND_URL || 'http://localhost:3000'
-    });
-    console.log('Mux upload data received:', uploadData);
+    let uploadData;
+    try {
+      uploadData = await MuxService.createDirectUpload({
+        cors_origin: process.env.FRONTEND_URL || 'http://localhost:3000'
+      });
+      console.log('Mux upload data received:', uploadData);
+    } catch (muxError) {
+      console.error('Mux service error:', muxError);
+      
+      // Check for specific Mux errors
+      let errorMessage = 'Failed to create Mux upload URL';
+      let statusCode = 500;
+      
+      if (muxError instanceof Error) {
+        if (muxError.message.includes('Free plan is limited to 10 assets')) {
+          errorMessage = 'Mux asset limit reached. Please delete unused videos or upgrade your Mux plan.';
+          statusCode = 507; // Insufficient Storage
+        } else if (muxError.message.includes('400')) {
+          errorMessage = 'Invalid request to Mux service. Please check your configuration.';
+          statusCode = 400;
+        }
+      }
+      
+      res.status(statusCode).json({
+        success: false,
+        message: errorMessage,
+        error: muxError instanceof Error ? muxError.message : 'Unknown Mux error'
+      } as ApiResponse);
+      return;
+    }
 
     // Create video record with Mux upload ID
     const video = new Video({
@@ -558,10 +587,24 @@ export const createUploadUrl = async (req: AuthRequest, res: Response): Promise<
 export const handleMuxWebhook = async (req: Request, res: Response): Promise<void> => {
   try {
     const signature = req.headers['mux-signature'] as string;
-    const payload = JSON.stringify(req.body);
+    const rawBody = req.body;
+    
+    console.log('Webhook received:', {
+      hasSignature: !!signature,
+      signature: signature,
+      signatureLength: signature?.length,
+      bodyType: typeof rawBody,
+      bodyConstructor: rawBody?.constructor?.name,
+      hasRawBody: !!rawBody,
+      rawBodyLength: rawBody?.length,
+      isBuffer: Buffer.isBuffer(rawBody),
+      webhookSecret: config.mux.webhookSecret ? 'SET' : 'NOT SET',
+      headers: Object.keys(req.headers)
+    });
 
-    // Verify webhook signature
-    if (!MuxService.verifyWebhookSignature(payload, signature)) {
+    // Verify webhook signature using raw body
+    if (!MuxService.verifyWebhookSignature(rawBody, signature)) {
+      console.log('Webhook signature verification failed');
       res.status(401).json({
         success: false,
         message: 'Invalid webhook signature'
@@ -569,22 +612,31 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const { type, data } = req.body;
+    console.log('Webhook signature verified successfully');
+
+    // Parse the body to JSON
+    let webhookData;
+    if (Buffer.isBuffer(rawBody)) {
+      webhookData = JSON.parse(rawBody.toString());
+    } else if (typeof rawBody === 'object') {
+      webhookData = rawBody;
+    } else {
+      webhookData = JSON.parse(rawBody);
+    }
+    
+    const { type, data } = webhookData;
 
     if (type === 'video.asset.ready') {
-      console.log('Received video.asset.ready webhook for asset:', data.id);
-      
-      // First try to find video by muxAssetId (if already set)
+      // Find video by Mux asset ID or by upload ID (for new assets)
       let video = await Video.findOne({ muxAssetId: data.id });
       
-      // If not found, try to find by upload ID from the asset data
+      // If not found by asset ID, try to find by upload ID
       if (!video && data.upload_id) {
         video = await Video.findOne({ muxUploadId: data.upload_id });
-        console.log('Found video by upload ID:', data.upload_id);
       }
       
       if (!video) {
-        console.error('Video not found for Mux asset:', data.id, 'or upload ID:', data.upload_id);
+        console.error('Video not found for Mux asset:', data.id, 'or upload:', data.upload_id);
         res.status(404).json({
           success: false,
           message: 'Video not found'
@@ -594,12 +646,6 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
 
       // Get asset details from Mux
       const assetDetails = await MuxService.getAsset(data.id);
-      console.log('Asset details from Mux:', {
-        id: assetDetails.id,
-        status: assetDetails.status,
-        duration: assetDetails.duration,
-        playback_ids: assetDetails.playback_ids
-      });
 
       // Update video with Mux asset information
       video.muxAssetId = data.id;
@@ -610,14 +656,12 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
       
       await video.save();
 
-      console.log(`Video ${video._id} is ready for playback with playback ID: ${video.muxPlaybackId}`);
+      console.log(`Video ${video._id} is ready for playback`);
     } else if (type === 'video.asset.errored') {
-      console.log('Received video.asset.errored webhook for asset:', data.id);
-      
-      // Try to find video by muxAssetId first
+      // Find video by Mux asset ID or by upload ID
       let video = await Video.findOne({ muxAssetId: data.id });
       
-      // If not found, try to find by upload ID
+      // If not found by asset ID, try to find by upload ID
       if (!video && data.upload_id) {
         video = await Video.findOne({ muxUploadId: data.upload_id });
       }
@@ -626,11 +670,7 @@ export const handleMuxWebhook = async (req: Request, res: Response): Promise<voi
         video.muxStatus = 'errored';
         await video.save();
         console.error(`Video ${video._id} processing failed`);
-      } else {
-        console.error('Video not found for errored asset:', data.id);
       }
-    } else {
-      console.log('Received unhandled webhook type:', type, 'for data:', data);
     }
 
     res.status(200).json({
@@ -672,12 +712,11 @@ export const getVideoStatus = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Check if user can view this video
-    const course = video.courseId as any;
-    if (req.user!.role !== 'admin' && course.instructor.toString() !== req.user!._id.toString()) {
+    // Check if user is admin
+    if (req.user!.role !== 'admin') {
       res.status(403).json({
         success: false,
-        message: 'You can only view status for videos in your own courses'
+        message: 'Only administrators can view video upload status'
       } as ApiResponse);
       return;
     }
@@ -743,12 +782,11 @@ export const syncVideoWithMux = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
-    // Check if user can sync this video
-    const course = video.courseId as any;
-    if (req.user!.role !== 'admin' && course.instructor.toString() !== req.user!._id.toString()) {
+    // Check if user is admin
+    if (req.user!.role !== 'admin') {
       res.status(403).json({
         success: false,
-        message: 'You can only sync videos in your own courses'
+        message: 'Only administrators can sync videos with Mux'
       } as ApiResponse);
       return;
     }

@@ -82,6 +82,9 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/admin', adminLimiter);
 app.use('/api/', limiter);
 
+// Raw body parsing for webhook endpoints (must be before JSON parsing)
+app.use('/api/videos/webhook', express.raw({ type: 'application/json' }));
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

@@ -68,8 +68,8 @@ router.delete('/:id', validateObjectId('id'), authenticateFirebaseToken, deleteV
 
 // @route   POST /api/videos/upload-url
 // @desc    Create Mux upload URL for video upload
-// @access  Private (Instructor/Admin only)
-router.post('/upload-url', /* authenticateFirebaseToken, */ [
+// @access  Private (Admin only)
+router.post('/upload-url', authenticateFirebaseToken, [
   body('courseId')
     .isMongoId()
     .withMessage('Invalid course ID'),
@@ -97,12 +97,12 @@ router.post('/webhook', handleMuxWebhook);
 
 // @route   GET /api/videos/:id/status
 // @desc    Get video upload status
-// @access  Private (Instructor/Admin only)
+// @access  Private (Admin only)
 router.get('/:id/status', validateObjectId('id'), authenticateFirebaseToken, getVideoStatus);
 
 // @route   POST /api/videos/:id/sync-mux
 // @desc    Manually sync video with Mux
-// @access  Private (Instructor/Admin only)
+// @access  Private (Admin only)
 router.post('/:id/sync-mux', validateObjectId('id'), authenticateFirebaseToken, syncVideoWithMux);
 
 export default router;
