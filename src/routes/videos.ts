@@ -9,7 +9,8 @@ import {
   getVideoStats,
   createUploadUrl,
   handleMuxWebhook,
-  getVideoStatus
+  getVideoStatus,
+  syncVideoWithMux
 } from '../controllers/videoController';
 import authenticateFirebaseToken from '../middleware/auth';
 import { validateVideoCreation, validateObjectId } from '../middleware/validation';
@@ -98,5 +99,10 @@ router.post('/webhook', handleMuxWebhook);
 // @desc    Get video upload status
 // @access  Private (Instructor/Admin only)
 router.get('/:id/status', validateObjectId('id'), authenticateFirebaseToken, getVideoStatus);
+
+// @route   POST /api/videos/:id/sync-mux
+// @desc    Manually sync video with Mux
+// @access  Private (Instructor/Admin only)
+router.post('/:id/sync-mux', validateObjectId('id'), authenticateFirebaseToken, syncVideoWithMux);
 
 export default router;

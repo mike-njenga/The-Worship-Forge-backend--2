@@ -690,3 +690,102 @@ export const getVideoStatus = async (req: AuthRequest, res: Response): Promise<v
     } as ApiResponse);
   }
 };
+
+// @desc    Manually sync video with Mux
+// @route   POST /api/videos/:id/sync-mux
+// @access  Private (Instructor/Admin only)
+export const syncVideoWithMux = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid video ID'
+      } as ApiResponse);
+      return;
+    }
+
+    const video = await Video.findById(id).populate('courseId', 'instructor');
+
+    if (!video) {
+      res.status(404).json({
+        success: false,
+        message: 'Video not found'
+      } as ApiResponse);
+      return;
+    }
+
+    // Check if user can sync this video
+    const course = video.courseId as any;
+    if (req.user!.role !== 'admin' && course.instructor.toString() !== req.user!._id.toString()) {
+      res.status(403).json({
+        success: false,
+        message: 'You can only sync videos in your own courses'
+      } as ApiResponse);
+      return;
+    }
+
+    if (!video.muxUploadId) {
+      res.status(400).json({
+        success: false,
+        message: 'Video does not have a Mux upload ID'
+      } as ApiResponse);
+      return;
+    }
+
+    console.log(`Manually syncing video ${video._id} with Mux upload ID: ${video.muxUploadId}`);
+
+    // Get upload details from Mux
+    const uploadDetails = await MuxService.getUpload(video.muxUploadId);
+    console.log('Upload details from Mux:', uploadDetails);
+
+    if (uploadDetails.asset_id) {
+      // Upload has been processed, get asset details
+      const assetDetails = await MuxService.getAsset(uploadDetails.asset_id);
+      console.log('Asset details from Mux:', assetDetails);
+
+      // Update video with asset information
+      video.muxAssetId = uploadDetails.asset_id;
+      video.muxPlaybackId = assetDetails.playback_ids?.[0]?.id;
+      video.muxStatus = 'ready';
+      video.duration = assetDetails.duration || 0;
+      video.thumbnail = `https://image.mux.com/${assetDetails.playback_ids?.[0]?.id}/thumbnail.jpg?time=0`;
+      
+      await video.save();
+
+      console.log(`Video ${video._id} synced successfully with Mux`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Video synced successfully with Mux',
+        data: {
+          muxStatus: video.muxStatus,
+          muxAssetId: video.muxAssetId,
+          muxPlaybackId: video.muxPlaybackId,
+          duration: video.duration,
+          thumbnail: video.thumbnail
+        }
+      } as ApiResponse);
+    } else {
+      // Upload is still processing
+      res.status(200).json({
+        success: true,
+        message: 'Video is still being processed by Mux',
+        data: {
+          muxStatus: 'processing',
+          muxUploadId: video.muxUploadId,
+          muxAssetId: null,
+          muxPlaybackId: null
+        }
+      } as ApiResponse);
+    }
+  } catch (error) {
+    console.error('Sync video with Mux error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to sync video with Mux',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as ApiResponse);
+  }
+};
