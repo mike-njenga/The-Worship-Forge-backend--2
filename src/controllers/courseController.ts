@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Course from '../models/Course';
+import Video from '../models/Video';
 import User from '../models/User';
 import { ApiResponse, AuthRequest } from '../types';
 import mongoose from 'mongoose';
@@ -147,7 +148,8 @@ export const createCourse = async (req: AuthRequest, res: Response): Promise<voi
       price,
       category,
       level,
-      tags = []
+      tags = [],
+      videos = [] // Array of video objects to attach
     } = req.body;
 
     // Check if user is teacher or admin
@@ -173,13 +175,39 @@ export const createCourse = async (req: AuthRequest, res: Response): Promise<voi
 
     await course.save();
 
-    // Populate instructor info
+    // Create videos if provided
+    const createdVideos = [];
+    if (videos && videos.length > 0) {
+      for (const videoData of videos) {
+        const video = new Video({
+          courseId: course._id,
+          title: videoData.title,
+          description: videoData.description || '',
+          videoUrl: videoData.videoUrl,
+          thumbnail: videoData.thumbnail,
+          duration: videoData.duration,
+          order: videoData.order || 1,
+          isPreview: videoData.isPreview || false
+        });
+
+        await video.save();
+        createdVideos.push(video);
+        course.videos.push(video._id);
+      }
+      await course.save();
+    }
+
+    // Populate instructor info and videos
     await course.populate('instructor', 'profile.firstName profile.lastName profile.avatar');
+    await course.populate('videos', 'title duration order isPreview');
 
     res.status(201).json({
       success: true,
       message: 'Course created successfully',
-      data: { course }
+      data: { 
+        course,
+        videos: createdVideos
+      }
     } as ApiResponse);
   } catch (error) {
     console.error('Create course error:', error);
@@ -197,7 +225,7 @@ export const createCourse = async (req: AuthRequest, res: Response): Promise<voi
 export const updateCourse = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { videos, ...updates } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       res.status(400).json({
@@ -228,21 +256,50 @@ export const updateCourse = async (req: AuthRequest, res: Response): Promise<voi
 
     // Remove fields that shouldn't be updated directly
     delete updates.instructor;
-    delete updates.videos;
     delete updates.assignments;
     delete updates.createdAt;
     delete updates.updatedAt;
 
+    // Update course basic information
     const updatedCourse = await Course.findByIdAndUpdate(
       id,
       updates,
       { new: true, runValidators: true }
-    ).populate('instructor', 'profile.firstName profile.lastName profile.avatar');
+    );
+
+    // Handle video additions if provided
+    const createdVideos = [];
+    if (videos && videos.length > 0) {
+      for (const videoData of videos) {
+        const video = new Video({
+          courseId: course._id,
+          title: videoData.title,
+          description: videoData.description || '',
+          videoUrl: videoData.videoUrl,
+          thumbnail: videoData.thumbnail,
+          duration: videoData.duration,
+          order: videoData.order || (course.videos.length + 1),
+          isPreview: videoData.isPreview || false
+        });
+
+        await video.save();
+        createdVideos.push(video);
+        updatedCourse!.videos.push(video._id);
+      }
+      await updatedCourse!.save();
+    }
+
+    // Populate instructor info and videos
+    await updatedCourse!.populate('instructor', 'profile.firstName profile.lastName profile.avatar');
+    await updatedCourse!.populate('videos', 'title duration order isPreview');
 
     res.status(200).json({
       success: true,
       message: 'Course updated successfully',
-      data: { course: updatedCourse }
+      data: { 
+        course: updatedCourse,
+        newVideos: createdVideos
+      }
     } as ApiResponse);
   } catch (error) {
     console.error('Update course error:', error);
@@ -494,6 +551,135 @@ export const getCourseStats = async (req: AuthRequest, res: Response): Promise<v
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve course statistics',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as ApiResponse);
+  }
+};
+
+// @desc    Add multiple videos to a course
+// @route   POST /api/courses/:id/videos
+// @access  Private (Instructor/Admin only)
+export const addVideosToCourse = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { videos } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid course ID'
+      } as ApiResponse);
+      return;
+    }
+
+    const course = await Course.findById(id);
+
+    if (!course) {
+      res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      } as ApiResponse);
+      return;
+    }
+
+    // Check if user can add videos to this course
+    if (req.user!.role !== 'admin' && course.instructor.toString() !== req.user!._id.toString()) {
+      res.status(403).json({
+        success: false,
+        message: 'You can only add videos to your own courses'
+      } as ApiResponse);
+      return;
+    }
+
+    if (!videos || !Array.isArray(videos) || videos.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Videos array is required and must not be empty'
+      } as ApiResponse);
+      return;
+    }
+
+    const createdVideos = [];
+    let nextOrder = course.videos.length + 1;
+
+    for (const videoData of videos) {
+      const video = new Video({
+        courseId: course._id,
+        title: videoData.title,
+        description: videoData.description || '',
+        videoUrl: videoData.videoUrl,
+        thumbnail: videoData.thumbnail,
+        duration: videoData.duration,
+        order: videoData.order || nextOrder++,
+        isPreview: videoData.isPreview || false
+      });
+
+      await video.save();
+      createdVideos.push(video);
+      course.videos.push(video._id);
+    }
+
+    await course.save();
+
+    res.status(201).json({
+      success: true,
+      message: `${createdVideos.length} videos added to course successfully`,
+      data: { 
+        course: course._id,
+        videos: createdVideos
+      }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Add videos to course error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add videos to course',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    } as ApiResponse);
+  }
+};
+
+// @desc    Get course with all videos
+// @route   GET /api/courses/:id/videos
+// @access  Public
+export const getCourseWithVideos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid course ID'
+      } as ApiResponse);
+      return;
+    }
+
+    const course = await Course.findById(id)
+      .populate('instructor', 'profile.firstName profile.lastName profile.avatar profile.bio')
+      .populate({
+        path: 'videos',
+        select: 'title description videoUrl thumbnail duration order isPreview',
+        options: { sort: { order: 1 } }
+      });
+
+    if (!course) {
+      res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      } as ApiResponse);
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Course with videos retrieved successfully',
+      data: { course }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Get course with videos error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve course with videos',
       error: error instanceof Error ? error.message : 'Unknown error'
     } as ApiResponse);
   }

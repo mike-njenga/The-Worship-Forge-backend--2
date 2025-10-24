@@ -95,11 +95,28 @@ if (config.nodeEnv === 'development') {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const { isDatabaseConnected } = require('./config/database');
+  const { isFirebaseInitialized } = require('./config/firebase');
+  
   res.status(200).json({
     success: true,
     message: 'Music LMS API is running',
     timestamp: new Date().toISOString(),
-    environment: config.nodeEnv
+    environment: config.nodeEnv,
+    services: {
+      database: {
+        connected: isDatabaseConnected(),
+        status: isDatabaseConnected() ? 'connected' : 'disconnected'
+      },
+      firebase: {
+        initialized: isFirebaseInitialized(),
+        status: isFirebaseInitialized() ? 'initialized' : 'not configured'
+      },
+      mux: {
+        configured: !!(config.mux.tokenId && config.mux.tokenSecret),
+        status: (config.mux.tokenId && config.mux.tokenSecret) ? 'configured' : 'not configured'
+      }
+    }
   });
 });
 
@@ -169,19 +186,21 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Start server only after database connection
+// Start server with graceful database connection handling
 const startServer = async () => {
   try {
-    // Connect to MongoDB Atlas first
-    await connectDB();
+    // Try to connect to MongoDB Atlas (non-blocking)
+    connectDB().catch((error) => {
+      console.log('Database connection will be retried in the background...');
+    });
     
-    // Start the Express server
+    // Start the Express server regardless of database connection status
     const PORT = config.port;
     app.listen(PORT, () => {
       console.log(`🚀 Server running in ${config.nodeEnv} mode on port ${PORT}`);
       console.log(`📱 API Health Check: http://localhost:${PORT}/api/health`);
       console.log(`🌐 Frontend URL: ${config.frontendUrl}`);
-      console.log(`🔗 Database: MongoDB Atlas`);
+      console.log(`🔗 Database: MongoDB Atlas (connecting...)`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

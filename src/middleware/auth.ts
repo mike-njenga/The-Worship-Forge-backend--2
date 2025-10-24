@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { auth } from '../config/firebase'
+import { auth, isFirebaseInitialized } from '../config/firebase'
 import User from '../models/User'
 
 // Extend Request interface to include our custom properties
@@ -14,6 +14,13 @@ declare global {
 }
 
 async function authenticateFirebaseToken(req: Request, res: Response, next: NextFunction) {
+  // Check if Firebase is initialized
+  if (!isFirebaseInitialized() || !auth) {
+    return res.status(503).json({ 
+      error: 'Firebase authentication is not available. Please configure Firebase credentials.' 
+    });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing or invalid Authorization header' });

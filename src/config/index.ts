@@ -9,7 +9,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // MongoDB Configuration
-  mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/music-lms',
+  mongoUri: process.env.MONGODB_URI || '',
   
   // JWT Configuration
   jwtSecret: process.env.JWT_SECRET || 'your-fallback-secret-key',
@@ -32,6 +32,14 @@ export const config = {
   
   // CORS Configuration
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  
+  // Mux Configuration
+  mux: {
+    tokenId: process.env.MUX_TOKEN_ID || '',
+    tokenSecret: process.env.MUX_TOKEN_SECRET || '',
+    signingKey: process.env.MUX_SIGNING_KEY || '',
+    webhookSecret: process.env.MUX_WEBHOOK_SECRET || '',
+  },
   
   // Rate Limiting Configuration
   rateLimit: {

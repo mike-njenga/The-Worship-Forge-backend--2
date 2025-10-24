@@ -54,14 +54,21 @@ export interface IVideo extends Document {
   courseId: ObjectId;
   title: string;
   description: string;
-  videoUrl: string;
+  videoUrl?: string; // Legacy URL (optional if using Mux)
   thumbnail: string;
   duration: number; // in seconds
   order: number;
   isPreview: boolean;
+  // Mux integration fields
+  muxAssetId?: string;
+  muxUploadId?: string;
+  muxPlaybackId?: string;
+  muxStatus?: 'waiting' | 'preparing' | 'ready' | 'errored';
   createdAt: Date;
   updatedAt: Date;
   formattedDuration: string;
+  playbackUrl: string; // Virtual field for playback URL
+  isReady: boolean; // Virtual field to check if video is ready
   canUserAccess(user: IUser): boolean;
 }
 

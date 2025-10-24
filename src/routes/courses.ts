@@ -7,7 +7,9 @@ import {
   deleteCourse,
   toggleCoursePublish,
   getInstructorCourses,
-  getCourseStats
+  getCourseStats,
+  addVideosToCourse,
+  getCourseWithVideos
 } from '../controllers/courseController';
 import authenticateFirebaseToken from '../middleware/auth';
 import { validateCourseCreation, validateObjectId, validatePagination } from '../middleware/validation';
@@ -35,10 +37,36 @@ router.get('/:id', validateObjectId('id'), getCourseById);
 // @access  Private (Instructor/Admin only)
 router.get('/:id/stats', validateObjectId('id'), authenticateFirebaseToken, getCourseStats);
 
+// @route   GET /api/courses/:id/videos
+// @desc    Get course with all videos
+// @access  Public
+router.get('/:id/videos', validateObjectId('id'), getCourseWithVideos);
+
 // @route   POST /api/courses
 // @desc    Create new course
 // @access  Private (Teacher/Admin only)
 router.post('/', authenticateFirebaseToken, validateCourseCreation, createCourse);
+
+// @route   POST /api/courses/:id/videos
+// @desc    Add multiple videos to a course
+// @access  Private (Instructor/Admin only)
+router.post('/:id/videos', validateObjectId('id'), authenticateFirebaseToken, [
+  body('videos')
+    .isArray({ min: 1 })
+    .withMessage('Videos must be a non-empty array'),
+  body('videos.*.title')
+    .notEmpty()
+    .withMessage('Video title is required'),
+  body('videos.*.videoUrl')
+    .notEmpty()
+    .withMessage('Video URL is required'),
+  body('videos.*.thumbnail')
+    .notEmpty()
+    .withMessage('Video thumbnail is required'),
+  body('videos.*.duration')
+    .isInt({ min: 1 })
+    .withMessage('Video duration must be a positive integer')
+], addVideosToCourse);
 
 // @route   PUT /api/courses/:id
 // @desc    Update course

@@ -17,18 +17,44 @@ const videoSchema = new Schema<IVideo>({
     type: String,
     maxlength: [500, 'Description cannot exceed 500 characters']
   },
+  // Legacy video URL (for backward compatibility)
   videoUrl: {
     type: String,
-    required: [true, 'Video URL is required']
+    required: function() {
+      return !this.muxUploadId && !this.muxAssetId; // Required only if no Mux upload/asset
+    }
+  },
+  // Mux integration fields
+  muxAssetId: {
+    type: String,
+    sparse: true, // Allows multiple documents without this field
+    index: true
+  },
+  muxUploadId: {
+    type: String,
+    sparse: true
+  },
+  muxPlaybackId: {
+    type: String,
+    sparse: true
+  },
+  muxStatus: {
+    type: String,
+    enum: ['waiting', 'preparing', 'ready', 'errored'],
+    default: 'waiting'
   },
   thumbnail: {
     type: String,
-    required: [true, 'Video thumbnail is required']
+    required: function() {
+      return !this.muxUploadId && !this.muxAssetId; // Required only if no Mux upload/asset
+    }
   },
   duration: {
     type: Number,
-    required: [true, 'Video duration is required'],
-    min: [1, 'Duration must be at least 1 second']
+    required: function() {
+      return !this.muxUploadId && !this.muxAssetId; // Required only if no Mux upload/asset
+    },
+    min: 0 // Allow 0 for Mux videos, will be validated in pre-save hook
   },
   order: {
     type: Number,
@@ -49,6 +75,8 @@ const videoSchema = new Schema<IVideo>({
 videoSchema.index({ courseId: 1, order: 1 });
 videoSchema.index({ courseId: 1 });
 videoSchema.index({ isPreview: 1 });
+// Note: muxAssetId index is already created by sparse: true in schema
+videoSchema.index({ muxStatus: 1 });
 
 // Virtual for formatted duration
 videoSchema.virtual('formattedDuration').get(function() {
@@ -60,6 +88,19 @@ videoSchema.virtual('formattedDuration').get(function() {
     return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+});
+
+// Virtual for Mux playback URL
+videoSchema.virtual('playbackUrl').get(function() {
+  if (this.muxPlaybackId) {
+    return `https://stream.mux.com/${this.muxPlaybackId}.m3u8`;
+  }
+  return this.videoUrl; // Fallback to legacy URL
+});
+
+// Virtual to check if video is ready for playback
+videoSchema.virtual('isReady').get(function() {
+  return this.muxStatus === 'ready' || !!this.videoUrl;
 });
 
 // Method to check if user can access video

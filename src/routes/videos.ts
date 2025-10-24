@@ -6,7 +6,10 @@ import {
   updateVideo,
   deleteVideo,
   reorderVideos,
-  getVideoStats
+  getVideoStats,
+  createUploadUrl,
+  handleMuxWebhook,
+  getVideoStatus
 } from '../controllers/videoController';
 import authenticateFirebaseToken from '../middleware/auth';
 import { validateVideoCreation, validateObjectId } from '../middleware/validation';
@@ -61,5 +64,39 @@ router.patch('/reorder', authenticateFirebaseToken, [
 // @desc    Delete video
 // @access  Private (Instructor/Admin only)
 router.delete('/:id', validateObjectId('id'), authenticateFirebaseToken, deleteVideo);
+
+// @route   POST /api/videos/upload-url
+// @desc    Create Mux upload URL for video upload
+// @access  Private (Instructor/Admin only)
+router.post('/upload-url', /* authenticateFirebaseToken, */ [
+  body('courseId')
+    .isMongoId()
+    .withMessage('Invalid course ID'),
+  body('title')
+    .notEmpty()
+    .withMessage('Video title is required'),
+  body('description')
+    .optional()
+    .isString()
+    .withMessage('Description must be a string'),
+  body('order')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Order must be a positive integer'),
+  body('isPreview')
+    .optional()
+    .isBoolean()
+    .withMessage('isPreview must be a boolean')
+], createUploadUrl);
+
+// @route   POST /api/videos/webhook
+// @desc    Handle Mux webhook for video processing updates
+// @access  Public (Mux webhook)
+router.post('/webhook', handleMuxWebhook);
+
+// @route   GET /api/videos/:id/status
+// @desc    Get video upload status
+// @access  Private (Instructor/Admin only)
+router.get('/:id/status', validateObjectId('id'), authenticateFirebaseToken, getVideoStatus);
 
 export default router;

@@ -440,7 +440,7 @@ export const getAllVideos = async (req: AuthRequest, res: Response): Promise<voi
 
     // Execute query
     const videos = await Video.find(filter)
-      .populate('course', 'title instructor')
+      .populate('courseId', 'title instructor')
       .sort(sortObj)
       .skip(skip)
       .limit(limitNum);

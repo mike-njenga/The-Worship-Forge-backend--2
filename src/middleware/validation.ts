@@ -99,6 +99,49 @@ export const validateCourseCreation = [
     .isArray()
     .withMessage('Tags must be an array'),
   
+  // Optional videos validation for course creation
+  body('videos')
+    .optional()
+    .isArray()
+    .withMessage('Videos must be an array'),
+  
+  body('videos.*.title')
+    .optional()
+    .trim()
+    .isLength({ min: 5, max: 100 })
+    .withMessage('Video title must be between 5 and 100 characters'),
+  
+  body('videos.*.description')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Video description cannot exceed 500 characters'),
+  
+  body('videos.*.videoUrl')
+    .optional()
+    .isURL()
+    .withMessage('Video URL must be a valid URL'),
+  
+  body('videos.*.thumbnail')
+    .optional()
+    .isURL()
+    .withMessage('Video thumbnail must be a valid URL'),
+  
+  body('videos.*.duration')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Video duration must be a positive integer'),
+  
+  body('videos.*.order')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Video order must be a positive integer'),
+  
+  body('videos.*.isPreview')
+    .optional()
+    .isBoolean()
+    .withMessage('Video isPreview must be a boolean'),
+  
   handleValidationErrors
 ];
 
